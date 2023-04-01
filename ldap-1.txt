@@ -1,0 +1,68 @@
+###################################################
+### In this video:
+### Domain: totatca.local
+### LDAP Master 1
+##### Fullname/FQDN: ldap-1.totatca.local
+##### IP address: 192.168.1.101
+##### ServerID: 101
+##### BindDN: cn=admin,dc=totatca,dc=local
+### LDAP Master 2
+##### Fullname/FQDN: ldap-2.totatca.local
+##### IP address: 192.168.1.102
+##### ServerID: 102
+##### BindDN: cn=admin,dc=totatca,dc=local
+#####################################################
+
+	vim ldap2_mod_syncprov.ldif
+
+dn: cn=module,cn=config
+objectClass: olcModuleList
+cn: module
+olcModulePath: /usr/lib/ldap
+olcModuleLoad: syncprov.la
+
+	ldapadd -Y EXTERNAL -H ldapi:/// -f ldap1_mod_syncprov.ldif
+
+###	
+	vim ldap1_syncprov.ldif
+
+dn: olcOverlay=syncprov,olcDatabase={1}mdb,cn=config
+objectClass: olcOverlayConfig
+objectClass: olcSyncProvConfig
+olcOverlay: syncprov
+olcSpSessionLog: 100
+
+	ldapadd -Y EXTERNAL -H ldapi:/// -f ldap1_syncprov.ldif
+	
+###
+	vim ldap1_master.ldif
+
+dn: cn=config
+changetype: modify
+replace: olcServerID
+olcServerID: 101
+
+dn: olcDatabase={1}mdb,cn=config
+changetype: modify
+add: olcSyncRepl
+olcSyncRepl: rid=001
+  provider=ldap://192.168.1.102:389/
+  bindmethod=simple
+  binddn="cn=admin,dc=totatca,dc=local"
+  credentials=Admin@123
+  searchbase="dc=totatca,dc=local"
+  scope=sub
+  schemachecking=on
+  type=refreshAndPersist
+  retry="30 5 300 3"
+  interval=00:00:05:00
+-
+add: olcMirrorMode
+olcMirrorMode: TRUE
+
+	ldapmodify -Y EXTERNAL -H ldapi:/// -f ldap1_master.ldif
+	
+	
+	
+	
+
